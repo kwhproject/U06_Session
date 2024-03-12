@@ -18,10 +18,22 @@ protected:
 public:
 	virtual void Tick(float DeltaTime) override;
 
+public:
+	void AddActiveTrigger();
+	void RemoveActiveTrigger();
+
 private:
 	UPROPERTY(EditAnywhere, Category = "Platform")
 		float Speed = 20.f;
 
 	UPROPERTY(EditAnywhere, Category = "Platform", meta = (MakeEditWidget))
 		FVector Target;
+
+	UPROPERTY(EditAnywhere, Category = "Platform")
+		int32 ActiveTriggers;
+
+private:
+	FVector OriginWS;
+	FVector TargetWS;
+
 };
