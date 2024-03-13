@@ -1,13 +1,21 @@
 #include "CGameInstance.h"
+#include "Blueprint/UserWidget.h"
 
 UCGameInstance::UCGameInstance(const FObjectInitializer& ObjectInitializer)
 {
 	UE_LOG(LogTemp, Error, TEXT("GameInstance Constructor"));
+
+	ConstructorHelpers::FClassFinder<UUserWidget> menuWidgetClass(TEXT("/Game/Widgets/WB_MainMenu"));
+	
+	if(menuWidgetClass.Succeeded())
+		MenuWidgetClass = menuWidgetClass.Class;
 }
 
 void UCGameInstance::Init()
 {
 	UE_LOG(LogTemp, Error, TEXT("GameInstance Init"));
+
+	UE_LOG(LogTemp, Warning, TEXT("Menu Widget Class Name is %s"), *MenuWidgetClass->GetName());
 }
 
 void UCGameInstance::Host()
@@ -20,8 +28,8 @@ void UCGameInstance::Host()
 	UWorld* world = GetWorld();
 	if (world == nullptr) return;
 
-	world->ServerTravel("/Game/ThirdPersonCPP/Maps/Play?listen");
-
+	world->ServerTravel("/Game/Maps/Play?listen");
+	
 }
 
 void UCGameInstance::Join(const FString& InAddress)
@@ -34,4 +42,23 @@ void UCGameInstance::Join(const FString& InAddress)
 	APlayerController* controller = GetFirstLocalPlayerController();
 	if (controller == nullptr) return;
 	controller->ClientTravel(InAddress, ETravelType::TRAVEL_Absolute);
+}
+
+void UCGameInstance::LoadMenu()
+{
+	if (MenuWidgetClass == nullptr) return;
+	UUserWidget* menuWidget = CreateWidget<UUserWidget>(this, MenuWidgetClass);
+
+	if (menuWidget == nullptr) return;
+	menuWidget->AddToViewport();
+	menuWidget->bIsFocusable = true;
+	
+	FInputModeUIOnly inputMode;
+	inputMode.SetWidgetToFocus(menuWidget->TakeWidget());
+	inputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+
+	APlayerController* controller = GetFirstLocalPlayerController();
+	if (controller == nullptr) return;
+	controller->SetInputMode(inputMode);
+	controller->bShowMouseCursor = true;
 }

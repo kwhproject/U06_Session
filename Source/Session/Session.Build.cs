@@ -12,7 +12,8 @@ public class Session : ModuleRules
 			"CoreUObject", 
 			"Engine", 
 			"InputCore", 
-			"HeadMountedDisplay" 
+			"HeadMountedDisplay",
+			"UMG"
 		});
 
 		PublicIncludePaths.Add(ModuleDirectory);
