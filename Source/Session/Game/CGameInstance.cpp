@@ -1,5 +1,5 @@
 #include "CGameInstance.h"
-#include "Blueprint/UserWidget.h"
+#include "Widgets/CMainMenu.h"
 
 UCGameInstance::UCGameInstance(const FObjectInitializer& ObjectInitializer)
 {
@@ -20,20 +20,24 @@ void UCGameInstance::Init()
 
 void UCGameInstance::Host()
 {
+	if(!!MenuWidget)
+		MenuWidget->SetInputGameMode();
+
 	UEngine* engine = GetEngine();
 	if (engine == nullptr) return;
-
 	engine->AddOnScreenDebugMessage(-1, 2, FColor::Green, TEXT("Host"), true, FVector2D(2));
 
 	UWorld* world = GetWorld();
 	if (world == nullptr) return;
-
 	world->ServerTravel("/Game/Maps/Play?listen");
 	
 }
 
 void UCGameInstance::Join(const FString& InAddress)
 {
+	if (!!MenuWidget)
+		MenuWidget->SetInputGameMode();
+
 	UEngine* engine = GetEngine();
 	if (engine == nullptr) return;
 
@@ -47,18 +51,10 @@ void UCGameInstance::Join(const FString& InAddress)
 void UCGameInstance::LoadMenu()
 {
 	if (MenuWidgetClass == nullptr) return;
-	UUserWidget* menuWidget = CreateWidget<UUserWidget>(this, MenuWidgetClass);
+	MenuWidget = CreateWidget<UCMainMenu>(this, MenuWidgetClass);
 
-	if (menuWidget == nullptr) return;
-	menuWidget->AddToViewport();
-	menuWidget->bIsFocusable = true;
-	
-	FInputModeUIOnly inputMode;
-	inputMode.SetWidgetToFocus(menuWidget->TakeWidget());
-	inputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	if (MenuWidget == nullptr) return;
+	MenuWidget->SetInputUIMode();
 
-	APlayerController* controller = GetFirstLocalPlayerController();
-	if (controller == nullptr) return;
-	controller->SetInputMode(inputMode);
-	controller->bShowMouseCursor = true;
+	MenuWidget->SetOwingGameInstance(this);
 }
