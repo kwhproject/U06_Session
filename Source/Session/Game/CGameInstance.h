@@ -19,13 +19,22 @@ public:
 		void Host() override;
 
 	UFUNCTION(Exec)
-		void Join(const FString& InAddress);
+		void Join(const FString& InAddress) override;
 
 	UFUNCTION(BlueprintCallable, Exec)
 		void LoadMenu();
 
+	UFUNCTION(BlueprintCallable, Exec)
+		void LoadGameMenu();
+
+	void TravelToMainMenu() override;
+
 
 private:
 	TSubclassOf<class UUserWidget> MenuWidgetClass;
+	TSubclassOf<class UUserWidget> GameWidgetClass;
+
 	class UCMainMenu* MenuWidget;
+	class UCGameMenu* GameWidget;
+
 };

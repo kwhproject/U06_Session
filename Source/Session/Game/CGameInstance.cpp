@@ -1,14 +1,18 @@
 #include "CGameInstance.h"
 #include "Widgets/CMainMenu.h"
+#include "Widgets/CGameMenu.h"
 
 UCGameInstance::UCGameInstance(const FObjectInitializer& ObjectInitializer)
 {
 	UE_LOG(LogTemp, Error, TEXT("GameInstance Constructor"));
 
 	ConstructorHelpers::FClassFinder<UUserWidget> menuWidgetClass(TEXT("/Game/Widgets/WB_MainMenu"));
-	
 	if(menuWidgetClass.Succeeded())
 		MenuWidgetClass = menuWidgetClass.Class;
+
+	ConstructorHelpers::FClassFinder<UUserWidget> gameWidgetClass(TEXT("/Game/Widgets/WB_GameMenu"));
+	if (gameWidgetClass.Succeeded())
+		GameWidgetClass = gameWidgetClass.Class;
 }
 
 void UCGameInstance::Init()
@@ -57,4 +61,22 @@ void UCGameInstance::LoadMenu()
 	MenuWidget->SetInputUIMode();
 
 	MenuWidget->SetOwingGameInstance(this);
+}
+
+void UCGameInstance::LoadGameMenu()
+{
+	if (GameWidgetClass == nullptr) return;
+	GameWidget = CreateWidget<UCGameMenu>(this, GameWidgetClass);
+
+	if (GameWidget == nullptr) return;
+	GameWidget->SetInputUIMode();
+
+	GameWidget->SetOwingGameInstance(this);
+}
+
+void UCGameInstance::TravelToMainMenu()
+{
+	APlayerController* controller = GetFirstLocalPlayerController();
+	if (controller == nullptr) return;
+	controller->ClientTravel("/Game/Maps/MainMenu", ETravelType::TRAVEL_Absolute);
 }
