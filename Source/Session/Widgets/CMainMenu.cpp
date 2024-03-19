@@ -59,6 +59,7 @@ void UCMainMenu::JoinServer()
 	const FString& address = IPAddressField->GetText().ToString();
 	OwingGameInstance->Join(address);
 
+
 	
 }
 
