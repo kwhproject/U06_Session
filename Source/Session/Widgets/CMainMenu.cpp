@@ -2,6 +2,15 @@
 #include "Components/Button.h"
 #include "Components/WidgetSwitcher.h"
 #include "Components/EditableTextBox.h"
+#include "Components/TextBlock.h"
+#include "CSessionRow.h"
+
+UCMainMenu::UCMainMenu(const FObjectInitializer& ObjectInitializer)
+{
+	ConstructorHelpers::FClassFinder<UUserWidget> sessionRowClassAsset(TEXT("/Game/Widgets/WB_SessionRow"));
+	if (sessionRowClassAsset.Succeeded())
+		SessionRowClass = sessionRowClassAsset.Class;
+}
 
 bool UCMainMenu::Initialize()
 {
@@ -41,6 +50,9 @@ void UCMainMenu::OpenJoinMenu()
 	if (JoinMenu == nullptr) return;
 
 	MenuSwitcher->SetActiveWidget(JoinMenu);
+
+	if(!!OwingGameInstance)
+		OwingGameInstance->ShowJoinableSessionList();
 }
 
 void UCMainMenu::OpenMainMenu()
@@ -54,13 +66,18 @@ void UCMainMenu::OpenMainMenu()
 void UCMainMenu::JoinServer()
 {
 	if (OwingGameInstance == nullptr) return;
-	if (IPAddressField == nullptr) return;
-
-	const FString& address = IPAddressField->GetText().ToString();
-	OwingGameInstance->Join(address);
-
-
 	
+
+	if (SelectedSessionIndex.IsSet())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Selected Session Index is %d"), SelectedSessionIndex.GetValue());
+		OwingGameInstance->Join(SelectedSessionIndex.GetValue());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Selected Session Index is not set"));
+	}
+
 }
 
 void UCMainMenu::QuitGame()
@@ -71,4 +88,30 @@ void UCMainMenu::QuitGame()
 
 	if (controller == nullptr) return;
 	controller->ConsoleCommand("Quit");
+}
+
+void UCMainMenu::SetSessionList(TArray<FString> InSessionNames)
+{
+	UWorld* world = GetWorld();
+	if (world == nullptr) return;
+
+	SessionList->ClearChildren();
+
+	uint32 i = 0;
+	for (const auto& sessionName : InSessionNames)
+	{
+		UCSessionRow* row = CreateWidget<UCSessionRow>(world, SessionRowClass);
+		if (row == nullptr) return;
+		row->SessionName->SetText(FText::FromString(sessionName));
+		row->PostCreated(this, i++);
+
+		if (SessionList == nullptr) return;
+		SessionList->AddChild(row);
+	}
+		
+}
+
+void UCMainMenu::SetSelectedSessionIndex(uint32 InIndex)
+{
+	SelectedSessionIndex = InIndex;
 }

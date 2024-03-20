@@ -4,6 +4,7 @@
 #include "Engine/GameInstance.h"
 #include "Widgets/IMenuInterface.h"
 #include "OnlineSubsystem.h"
+#include "Interfaces/OnlineSessionInterface.h"
 #include "CGameInstance.generated.h"
 
 UCLASS()
@@ -20,7 +21,7 @@ public:
 		void Host() override;	
 
 	UFUNCTION(Exec)
-		void Join(const FString& InAddress) override;
+		void Join(uint32 InIndex) override;
 
 	UFUNCTION(BlueprintCallable, Exec)
 		void LoadMenu();
@@ -29,6 +30,7 @@ public:
 		void LoadGameMenu();
 
 	void TravelToMainMenu() override;
+	void ShowJoinableSessionList() override;
 
 private:
 	void CreateSession();
@@ -36,6 +38,7 @@ private:
 	void OnCreateSessionCompleted(FName InSessionName, bool InSuccess);
 	void OnDestroySessionCompleted(FName InSessionName, bool InSuccess);
 	void OnFindSessionCompleted(bool InSuccess);
+	void OnJoinSessionCompleted(FName InSessionName, EOnJoinSessionCompleteResult::Type InResult);
 
 private:
 	TSubclassOf<class UUserWidget> MenuWidgetClass;

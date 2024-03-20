@@ -10,6 +10,9 @@ class SESSION_API UCMainMenu : public UCMenu
 {
 	GENERATED_BODY()
 	
+public:
+	UCMainMenu(const FObjectInitializer& ObjectInitializer);
+
 protected:
 	virtual bool Initialize() override;
 
@@ -28,6 +31,10 @@ private:
 
 	UFUNCTION()
 		void QuitGame();
+
+public:
+	void SetSessionList(TArray<FString> InSessionNames);
+	void SetSelectedSessionIndex(uint32 InIndex);
 
 private:
 	UPROPERTY(meta = (BindWidget))
@@ -55,6 +62,10 @@ private:
 		class UWidget* JoinMenu;
 
 	UPROPERTY(meta = (BindWidget))
-		class UEditableTextBox* IPAddressField;
+		class UPanelWidget* SessionList;
+
+private:
+	TSubclassOf<class UUserWidget> SessionRowClass;
+	TOptional<uint32> SelectedSessionIndex;
 
 };
