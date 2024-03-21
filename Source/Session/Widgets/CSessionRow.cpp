@@ -14,3 +14,8 @@ void UCSessionRow::OnClicked()
 {
 	ParentWidget->SetSelectedSessionIndex(SelfIndex);
 }
+
+void UCSessionRow::SetClicked(bool InClicked)
+{
+	bClicked = InClicked;
+}

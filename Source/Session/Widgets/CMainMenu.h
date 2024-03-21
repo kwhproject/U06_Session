@@ -5,6 +5,18 @@
 #include "CMenu.h"
 #include "CMainMenu.generated.h"
 
+USTRUCT()
+struct FSessionData
+{
+	GENERATED_BODY()
+
+public:
+	FString Name;
+	uint16 CurrentPlayers;
+	uint16 MaxPlayers;
+	FString HostUserName;
+};
+
 UCLASS()
 class SESSION_API UCMainMenu : public UCMenu
 {
@@ -33,7 +45,7 @@ private:
 		void QuitGame();
 
 public:
-	void SetSessionList(TArray<FString> InSessionNames);
+	void SetSessionList(TArray<FSessionData> InSessionDatas);
 	void SetSelectedSessionIndex(uint32 InIndex);
 
 private:

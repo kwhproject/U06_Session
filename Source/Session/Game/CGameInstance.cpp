@@ -60,9 +60,19 @@ void UCGameInstance::CreateSession()
 	if (SessionInterface.IsValid() == false) return;
 
 	FOnlineSessionSettings sessionSettings;
-	sessionSettings.bIsLANMatch = true;
+
+	if (IOnlineSubsystem::Get()->GetSubsystemName() == "NULL")
+	{
+		sessionSettings.bIsLANMatch = true;
+	}
+	else
+	{
+		sessionSettings.bIsLANMatch = false;
+	}
+
 	sessionSettings.NumPublicConnections = 5;
 	sessionSettings.bShouldAdvertise = true;
+	sessionSettings.bUsesPresence = true;
 
 	SessionInterface->CreateSession(0, SESSION_NAME, sessionSettings);
 }
@@ -114,7 +124,9 @@ void UCGameInstance::ShowJoinableSessionList()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Start Find Sessions"));
 
-		SessionSearch->bIsLanQuery = true;
+		//SessionSearch->bIsLanQuery = true;
+		SessionSearch->MaxSearchResults = 100;
+		SessionSearch->QuerySettings.Set(SEARCH_PRESENCE, true, EOnlineComparisonOp::Equals);
 		SessionInterface->FindSessions(0, SessionSearch.ToSharedRef());
 	}
 }
@@ -157,17 +169,22 @@ void UCGameInstance::OnFindSessionCompleted(bool InSuccess)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Finished Find Session"));
 
-		TArray<FString> sessionNames;
-
+		TArray<FSessionData> sessionDatas;
 		for (const auto& searchResult : SessionSearch->SearchResults)
 		{
 			UE_LOG(LogTemp, Error, TEXT("Found Session ID : %s"), *searchResult.GetSessionIdStr());
 			UE_LOG(LogTemp, Error, TEXT("Ping : %d"), searchResult.PingInMs);
 
-			sessionNames.Add(searchResult.GetSessionIdStr());
+			FSessionData sessionData;
+			sessionData.Name = searchResult.GetSessionIdStr();
+			sessionData.MaxPlayers = searchResult.Session.SessionSettings.NumPublicConnections;
+			sessionData.CurrentPlayers = sessionData.MaxPlayers - searchResult.Session.NumOpenPublicConnections;
+			sessionData.HostUserName = searchResult.Session.OwningUserName;
+
+			sessionDatas.Add(sessionData);
 		}
 
-		MenuWidget->SetSessionList(sessionNames);
+		MenuWidget->SetSessionList(sessionDatas);
 	}
 }
 

@@ -90,7 +90,7 @@ void UCMainMenu::QuitGame()
 	controller->ConsoleCommand("Quit");
 }
 
-void UCMainMenu::SetSessionList(TArray<FString> InSessionNames)
+void UCMainMenu::SetSessionList(TArray<FSessionData> InSessionDatas)
 {
 	UWorld* world = GetWorld();
 	if (world == nullptr) return;
@@ -98,20 +98,38 @@ void UCMainMenu::SetSessionList(TArray<FString> InSessionNames)
 	SessionList->ClearChildren();
 
 	uint32 i = 0;
-	for (const auto& sessionName : InSessionNames)
+	for (const auto& sessionData : InSessionDatas)
 	{
 		UCSessionRow* row = CreateWidget<UCSessionRow>(world, SessionRowClass);
 		if (row == nullptr) return;
-		row->SessionName->SetText(FText::FromString(sessionName));
+		row->SessionName->SetText(FText::FromString(sessionData.Name));
+		row->HostUserName->SetText(FText::FromString(sessionData.HostUserName));
+		FString fractionStr = FString::Printf(TEXT("%d/%d"), sessionData.CurrentPlayers, sessionData.MaxPlayers);
+		row->ConnectionFraction->SetText(FText::FromString(fractionStr));
+
 		row->PostCreated(this, i++);
 
 		if (SessionList == nullptr) return;
 		SessionList->AddChild(row);
 	}
 		
+
 }
 
 void UCMainMenu::SetSelectedSessionIndex(uint32 InIndex)
 {
 	SelectedSessionIndex = InIndex;
+
+	for (int i = 0; i < SessionList->GetChildrenCount(); i++)
+	{
+		UCSessionRow* row = Cast<UCSessionRow>(SessionList->GetChildAt(i));
+		if (!!row)
+		{
+			row->SetClicked
+			(
+				(SelectedSessionIndex.IsSet()) && 
+				(i == SelectedSessionIndex.GetValue())
+			);
+		}
+	}
 }
