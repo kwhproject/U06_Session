@@ -39,6 +39,9 @@ private:
 		void OpenMainMenu();
 
 	UFUNCTION()
+		void OpenHostMenu();
+
+	UFUNCTION()
 		void JoinServer();
 
 	UFUNCTION()
@@ -74,7 +77,19 @@ private:
 		class UWidget* JoinMenu;
 
 	UPROPERTY(meta = (BindWidget))
+		class UWidget* HostMenu;
+
+	UPROPERTY(meta = (BindWidget))
 		class UPanelWidget* SessionList;
+
+	UPROPERTY(meta = (BindWidget))
+		class UEditableTextBox* SessionNameText;
+
+	UPROPERTY(meta = (BindWidget))
+		class UButton* HostMenu_Back;
+
+	UPROPERTY(meta = (BindWidget))
+		class UButton* HostMenu_Confirm;
 
 private:
 	TSubclassOf<class UUserWidget> SessionRowClass;

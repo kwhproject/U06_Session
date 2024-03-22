@@ -4,6 +4,7 @@
 #include "OnlineSessionSettings.h"
 
 const static FName SESSION_NAME = TEXT("GameSession");
+const static FName SESSION_KEY = TEXT("SessionKey");
 
 UCGameInstance::UCGameInstance(const FObjectInitializer& ObjectInitializer)
 {
@@ -37,10 +38,15 @@ void UCGameInstance::Init()
 	{
 		UE_LOG(LogTemp, Error, TEXT("OSS Not Found"));
 	}
+
+	if (!!GEngine)
+	GEngine->OnNetworkFailure().AddUObject(this, &UCGameInstance::OnNetworkFailure);
 }
 
-void UCGameInstance::Host()
+void UCGameInstance::Host(FString InSessionName)
 {
+	CustomSessionName = InSessionName;
+
 	if (SessionInterface.IsValid() == false) return;
 
 	auto existingSession = SessionInterface->GetNamedSession(SESSION_NAME);
@@ -73,6 +79,8 @@ void UCGameInstance::CreateSession()
 	sessionSettings.NumPublicConnections = 5;
 	sessionSettings.bShouldAdvertise = true;
 	sessionSettings.bUsesPresence = true;
+
+	sessionSettings.Set(SESSION_KEY, CustomSessionName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
 	SessionInterface->CreateSession(0, SESSION_NAME, sessionSettings);
 }
@@ -131,6 +139,12 @@ void UCGameInstance::ShowJoinableSessionList()
 	}
 }
 
+void UCGameInstance::StartSession()
+{
+	if(SessionInterface.IsValid())
+		SessionInterface->StartSession(SESSION_NAME);
+}
+
 void UCGameInstance::OnCreateSessionCompleted(FName InSessionName, bool InSuccess)
 {
 	UE_LOG(LogTemp, Error, TEXT("CREATED"));
@@ -152,7 +166,7 @@ void UCGameInstance::OnCreateSessionCompleted(FName InSessionName, bool InSucces
 
 	UWorld* world = GetWorld();
 	if (world == nullptr) return;
-	world->ServerTravel("/Game/Maps/Play?listen");
+	world->ServerTravel("/Game/Maps/Lobby?listen");
 }
 
 void UCGameInstance::OnDestroySessionCompleted(FName InSessionName, bool InSuccess)
@@ -176,10 +190,20 @@ void UCGameInstance::OnFindSessionCompleted(bool InSuccess)
 			UE_LOG(LogTemp, Error, TEXT("Ping : %d"), searchResult.PingInMs);
 
 			FSessionData sessionData;
-			sessionData.Name = searchResult.GetSessionIdStr();
+			
 			sessionData.MaxPlayers = searchResult.Session.SessionSettings.NumPublicConnections;
 			sessionData.CurrentPlayers = sessionData.MaxPlayers - searchResult.Session.NumOpenPublicConnections;
 			sessionData.HostUserName = searchResult.Session.OwningUserName;
+
+			FString sessionName;
+			if (searchResult.Session.SessionSettings.Get(SESSION_KEY, sessionName))
+			{
+				sessionData.Name = sessionName;
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Session(Lobby) name not found"));
+			}
 
 			sessionDatas.Add(sessionData);
 		}
@@ -205,4 +229,13 @@ void UCGameInstance::OnJoinSessionCompleted(FName InSessionName, EOnJoinSessionC
 	APlayerController* controller = GetFirstLocalPlayerController();
 	if (controller == nullptr) return;
 	controller->ClientTravel(address, ETravelType::TRAVEL_Absolute);
+}
+
+void UCGameInstance::OnNetworkFailure(UWorld* InWorld, UNetDriver* InNetDriver, ENetworkFailure::Type InFailureType, const FString& InErrorMessage)
+{
+	UEngine* engine = GetEngine();
+	if (engine == nullptr) return;
+	engine->AddOnScreenDebugMessage(-1, 2, FColor::Red, InErrorMessage);
+
+	TravelToMainMenu();
 }

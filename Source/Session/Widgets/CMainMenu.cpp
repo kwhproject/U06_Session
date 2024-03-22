@@ -18,7 +18,7 @@ bool UCMainMenu::Initialize()
 	if (bSuccess == false) return false;
 
 	if (HostButton == nullptr) return false;
-	HostButton->OnClicked.AddDynamic(this, &UCMainMenu::HostServer);
+	HostButton->OnClicked.AddDynamic(this, &UCMainMenu::OpenHostMenu);
 
 	if (JoinButton == nullptr) return false;
 	JoinButton->OnClicked.AddDynamic(this, &UCMainMenu::OpenJoinMenu);
@@ -28,6 +28,12 @@ bool UCMainMenu::Initialize()
 
 	if (JoinMenu_Confirm == nullptr) return false;
 	JoinMenu_Confirm->OnClicked.AddDynamic(this, &UCMainMenu::JoinServer);
+
+	if (HostMenu_Back == nullptr) return false;
+	HostMenu_Back->OnClicked.AddDynamic(this, &UCMainMenu::OpenMainMenu);
+
+	if (HostMenu_Confirm == nullptr) return false;
+	HostMenu_Confirm->OnClicked.AddDynamic(this, &UCMainMenu::HostServer);
 
 	if (QuitButton == nullptr) return false;
 	QuitButton->OnClicked.AddDynamic(this, &UCMainMenu::QuitGame);
@@ -40,8 +46,11 @@ bool UCMainMenu::Initialize()
 
 void UCMainMenu::HostServer()
 {
-	if (!!OwingGameInstance)
-	OwingGameInstance->Host();
+	if (!!OwingGameInstance && !!SessionNameText)
+	{
+		FString customSessionName = SessionNameText->Text.ToString();
+		OwingGameInstance->Host(customSessionName);
+	}
 }
 
 void UCMainMenu::OpenJoinMenu()
@@ -61,6 +70,14 @@ void UCMainMenu::OpenMainMenu()
 	if (MainMenu == nullptr) return;
 
 	MenuSwitcher->SetActiveWidget(MainMenu);
+}
+
+void UCMainMenu::OpenHostMenu()
+{
+	if (MenuSwitcher == nullptr) return;
+	if (HostMenu == nullptr) return;
+
+	MenuSwitcher->SetActiveWidget(HostMenu);
 }
 
 void UCMainMenu::JoinServer()
@@ -113,6 +130,7 @@ void UCMainMenu::SetSessionList(TArray<FSessionData> InSessionDatas)
 		SessionList->AddChild(row);
 	}
 		
+
 
 }
 

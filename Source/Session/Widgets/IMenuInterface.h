@@ -15,7 +15,7 @@ class SESSION_API IIMenuInterface
 	GENERATED_BODY()
 
 public:
-	virtual void Host() = 0;
+	virtual void Host(FString InSessionName) = 0;
 	virtual void Join(uint32 InIndex) = 0;
 	virtual void TravelToMainMenu() = 0;
 	virtual void ShowJoinableSessionList() = 0;
