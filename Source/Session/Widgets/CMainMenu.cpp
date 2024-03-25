@@ -39,7 +39,6 @@ bool UCMainMenu::Initialize()
 	QuitButton->OnClicked.AddDynamic(this, &UCMainMenu::QuitGame);
 
 	UE_LOG(LogTemp, Error, TEXT("OwingGameInstance"));
-	
 
 	return true;
 }
