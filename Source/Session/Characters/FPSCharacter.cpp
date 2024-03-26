@@ -6,6 +6,7 @@
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/PlayerController.h"
+#include "Net/UnrealNetwork.h"
 
 
 AFPSCharacter::AFPSCharacter()
@@ -91,21 +92,49 @@ void AFPSCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInput
 	PlayerInputComponent->BindAxis("LookUpRate", this, &AFPSCharacter::LookUpAtRate);
 }
 
-
+void AFPSCharacter::OnRep_RandomValue()
+{
+	CLog::Print("Yes Rep : " + FString::FromInt(RandomValue_Rep), -1, 2.f, FColor::Red);
+}
 
 void AFPSCharacter::OnServer_Implementation()
 {
+	//OnClient();
+
+	RandomValue_Rep = UKismetMathLibrary::RandomInteger(100);
+	CLog::Print("Yes Rep : " + FString::FromInt(RandomValue_Rep), -1, 2.f, FColor::Red);
 	OnNetMulticast();
 }
 
 void AFPSCharacter::OnNetMulticast_Implementation()
 {
-	CLog::Print("OnNetMulticast");
+	//CLog::Print("OnNetMulticast");
+
+	//if (GetLocalRole() == ENetRole::ROLE_Authority)
+	//	CLog::Print("Authority");
+	//else if (GetLocalRole() == ENetRole::ROLE_AutonomousProxy)
+	//	CLog::Print("AutonomousProxy");
+	//else if (GetLocalRole() == ENetRole::ROLE_SimulatedProxy)
+	//	CLog::Print("SimulatedProxy");
+	//else
+	//	CLog::Print("None");
+
+	CLog::Print("No Rep : " + FString::FromInt(RandomValue), -1, 2.f, FColor::Blue);
+	//CLog::Print("Yes Rep : " + FString::FromInt(RandomValue_Rep), -1, 2.f, FColor::Red);
+}
+
+void AFPSCharacter::OnClient_Implementation()
+{
+	//CLog::Print("OnClient");
+
+	
 }
 
 void AFPSCharacter::OnFire()
 {
 	OnServer();
+
+	RandomValue = UKismetMathLibrary::RandomInteger(100);
 
 	if (FireSound != NULL)
 	{
@@ -184,4 +213,11 @@ FHitResult AFPSCharacter::WeaponTrace(const FVector& StartTrace, const FVector& 
 	GetWorld()->LineTraceSingleByChannel(Hit, StartTrace, EndTrace, ECC_GameTraceChannel1, TraceParams);
 
 	return Hit;
+}
+
+void AFPSCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AFPSCharacter, RandomValue_Rep);
 }
