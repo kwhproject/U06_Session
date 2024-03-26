@@ -7,6 +7,9 @@
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/PlayerController.h"
 #include "Net/UnrealNetwork.h"
+#include "Particles/ParticleSystemComponent.h"
+#include "Actors/CBullet.h"
+#include "Game/CGameState.h"
 
 
 AFPSCharacter::AFPSCharacter()
@@ -71,6 +74,20 @@ AFPSCharacter::AFPSCharacter()
 		FP_Gun->SetSkeletalMesh(gunAsset.Object);
 	}
 
+
+	// GunShot Particle
+	CHelpers::CreateSceneComponent(this, &FP_GunShotParticle, "FP_GunShotParticle", FP_Gun);
+	FP_GunShotParticle->SetupAttachment(FP_Gun, "Muzzle");
+	FP_GunShotParticle->bAutoActivate = false;
+	FP_GunShotParticle->SetOnlyOwnerSee(true);
+
+
+	CHelpers::CreateSceneComponent(this, &TP_GunShotParticle, "TP_GunShotParticle", TP_Gun);
+	TP_GunShotParticle->SetupAttachment(TP_Gun, "Muzzle");
+	TP_GunShotParticle->bAutoActivate = false;
+	TP_GunShotParticle->SetOwnerNoSee(true);
+
+
 	WeaponRange = 5000.0f;
 	WeaponDamage = 10.0f;
 
@@ -92,55 +109,27 @@ void AFPSCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInput
 	PlayerInputComponent->BindAxis("LookUpRate", this, &AFPSCharacter::LookUpAtRate);
 }
 
-void AFPSCharacter::OnRep_RandomValue()
+
+
+void AFPSCharacter::BeginPlay()
 {
-	CLog::Print("Yes Rep : " + FString::FromInt(RandomValue_Rep), -1, 2.f, FColor::Red);
-}
-
-void AFPSCharacter::OnServer_Implementation()
-{
-	//OnClient();
-
-	RandomValue_Rep = UKismetMathLibrary::RandomInteger(100);
-	CLog::Print("Yes Rep : " + FString::FromInt(RandomValue_Rep), -1, 2.f, FColor::Red);
-	OnNetMulticast();
-}
-
-void AFPSCharacter::OnNetMulticast_Implementation()
-{
-	//CLog::Print("OnNetMulticast");
-
-	//if (GetLocalRole() == ENetRole::ROLE_Authority)
-	//	CLog::Print("Authority");
-	//else if (GetLocalRole() == ENetRole::ROLE_AutonomousProxy)
-	//	CLog::Print("AutonomousProxy");
-	//else if (GetLocalRole() == ENetRole::ROLE_SimulatedProxy)
-	//	CLog::Print("SimulatedProxy");
-	//else
-	//	CLog::Print("None");
-
-	CLog::Print("No Rep : " + FString::FromInt(RandomValue), -1, 2.f, FColor::Blue);
-	//CLog::Print("Yes Rep : " + FString::FromInt(RandomValue_Rep), -1, 2.f, FColor::Red);
-}
-
-void AFPSCharacter::OnClient_Implementation()
-{
-	//CLog::Print("OnClient");
-
+	Super::BeginPlay();
 	
+	ACGameState* gameState = Cast<ACGameState>(GetWorld()->GetGameState());
+	if (!!gameState)
+	{
+		CLog::Print(gameState->TestTeam == ETeamType::Blue ? "Blue" : "Red");
+		CLog::Print(gameState->PlayerArray.Num());
+	}
+
+	else
+	{
+		CLog::Print("GameState is not found");
+	}
 }
 
 void AFPSCharacter::OnFire()
 {
-	OnServer();
-
-	RandomValue = UKismetMathLibrary::RandomInteger(100);
-
-	if (FireSound != NULL)
-	{
-		UGameplayStatics::PlaySoundAtLocation(this, FireSound, GetActorLocation());
-	}
-
 	if (FP_FireAnimation != NULL)
 	{
 		UAnimInstance* AnimInstance = FP_Mesh->GetAnimInstance();
@@ -149,6 +138,9 @@ void AFPSCharacter::OnFire()
 			AnimInstance->Montage_Play(FP_FireAnimation, 1.f);
 		}
 	}
+
+	if (!!FP_GunShotParticle)
+		FP_GunShotParticle->Activate(true);
 
 	APlayerController* PlayerController = Cast<APlayerController>(GetController());
 	
@@ -176,6 +168,35 @@ void AFPSCharacter::OnFire()
 		DamagedComponent->AddImpulseAtLocation(ShootDir * WeaponDamage, Impact.Location);
 	}
 	
+	OnServerFire(StartTrace, EndTrace);
+}
+
+void AFPSCharacter::OnServerFire_Implementation(const FVector& InLineStart, const FVector& InLineEnd)
+{
+	NetMulticast_ShootEffects();
+}
+
+void AFPSCharacter::NetMulticast_ShootEffects_Implementation()
+{
+	if (!!TP_FireAnimation)
+	{
+		UAnimInstance* animInstance = GetMesh()->GetAnimInstance();
+		if (!!animInstance)
+		{
+			animInstance->Montage_Play(TP_FireAnimation);
+		}
+	}
+
+	if (!!FireSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, FireSound, GetActorLocation());
+	}
+
+	if (!!TP_GunShotParticle)
+		TP_GunShotParticle->Activate(true);
+
+	if (!!BulletClass)
+		GetWorld()->SpawnActor<ACBullet>(BulletClass, TP_Gun->GetSocketLocation("Muzzle"), TP_Gun->GetSocketRotation("Muzzle"));
 }
 
 void AFPSCharacter::MoveForward(float Value)
@@ -215,9 +236,9 @@ FHitResult AFPSCharacter::WeaponTrace(const FVector& StartTrace, const FVector& 
 	return Hit;
 }
 
-void AFPSCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(AFPSCharacter, RandomValue_Rep);
-}
+//void AFPSCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
+//{
+//	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+//
+//	//DOREPLIFETIME(AFPSCharacter, RandomValue_Rep);
+//}
