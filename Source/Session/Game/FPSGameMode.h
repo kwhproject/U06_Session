@@ -1,5 +1,3 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -13,6 +11,20 @@ class AFPSGameMode : public AGameModeBase
 
 public:
 	AFPSGameMode();
+
+protected:
+	virtual void PostLogin(APlayerController* NewPlayer) override;
+	virtual void BeginPlay() override;
+
+private:
+	void MoveToSpawnPoint(class AFPSCharacter* InPlayer);
+
+private:
+	TArray<class ACSpawnPoint*> RedTeamSpawnPoints;
+	TArray<class ACSpawnPoint*> BlueTeamSpawnPoints;
+
+	TArray<class AFPSCharacter*> RedTeamCharacters;
+	TArray<class AFPSCharacter*> BlueTeamCharacters;
 };
 
 

@@ -8,9 +8,8 @@
 #include "GameFramework/PlayerController.h"
 #include "Net/UnrealNetwork.h"
 #include "Particles/ParticleSystemComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Actors/CBullet.h"
-#include "Game/CGameState.h"
-
 
 AFPSCharacter::AFPSCharacter()
 {
@@ -115,17 +114,8 @@ void AFPSCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	ACGameState* gameState = Cast<ACGameState>(GetWorld()->GetGameState());
-	if (!!gameState)
-	{
-		CLog::Print(gameState->TestTeam == ETeamType::Blue ? "Blue" : "Red");
-		CLog::Print(gameState->PlayerArray.Num());
-	}
-
-	else
-	{
-		CLog::Print("GameState is not found");
-	}
+	if(HasAuthority() == false)
+		SetTeamColor(CurrentTeam);
 }
 
 void AFPSCharacter::OnFire()
@@ -199,6 +189,24 @@ void AFPSCharacter::NetMulticast_ShootEffects_Implementation()
 		GetWorld()->SpawnActor<ACBullet>(BulletClass, TP_Gun->GetSocketLocation("Muzzle"), TP_Gun->GetSocketRotation("Muzzle"));
 }
 
+void AFPSCharacter::SetTeamColor_Implementation(ETeamType InTeamType)
+{
+	FLinearColor color;
+	if (InTeamType == ETeamType::Red)
+		color = FLinearColor::Red;
+	else
+		color = FLinearColor::Blue;
+
+	if (DynamicMaterial == nullptr)
+	{
+		DynamicMaterial = UMaterialInstanceDynamic::Create(GetMesh()->GetMaterial(0), nullptr);
+		DynamicMaterial->SetVectorParameterValue("BodyColor", color);
+
+		FP_Mesh->SetMaterial(0, DynamicMaterial);
+		GetMesh()->SetMaterial(0, DynamicMaterial);
+	}
+}
+
 void AFPSCharacter::MoveForward(float Value)
 {
 	if (Value != 0.0f)
@@ -236,9 +244,9 @@ FHitResult AFPSCharacter::WeaponTrace(const FVector& StartTrace, const FVector& 
 	return Hit;
 }
 
-//void AFPSCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
-//{
-//	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-//
-//	//DOREPLIFETIME(AFPSCharacter, RandomValue_Rep);
-//}
+void AFPSCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AFPSCharacter, CurrentTeam);
+}
