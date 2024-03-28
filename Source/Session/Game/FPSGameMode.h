@@ -12,8 +12,11 @@ class AFPSGameMode : public AGameModeBase
 public:
 	AFPSGameMode();
 
+	virtual void Tick(float DeltaTime) override;
+
 protected:
 	virtual void PostLogin(APlayerController* NewPlayer) override;
+	void SpawnHost();
 	virtual void BeginPlay() override;
 
 private:
@@ -25,6 +28,7 @@ private:
 
 	TArray<class AFPSCharacter*> RedTeamCharacters;
 	TArray<class AFPSCharacter*> BlueTeamCharacters;
+	TArray<class AFPSCharacter*> WaitingForSpawnCharacters;
 };
 
 

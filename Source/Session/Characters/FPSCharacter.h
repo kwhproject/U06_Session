@@ -64,6 +64,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	void PossessedBy(AController* NewController);
 	void OnFire();
 
 	UFUNCTION(Reliable, Server)
@@ -97,4 +98,5 @@ public:
 
 private:
 	class UMaterialInstanceDynamic* DynamicMaterial;
+	class ACPlayerState* SelfPlayerState;
 };

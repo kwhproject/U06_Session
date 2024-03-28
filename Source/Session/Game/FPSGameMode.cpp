@@ -13,10 +13,25 @@ AFPSGameMode::AFPSGameMode()
 {
 	static ConstructorHelpers::FClassFinder<APawn> PlayerPawnClassFinder(TEXT("/Game/Player/BP_CPlayer"));
 	
+	
 	DefaultPawnClass = PlayerPawnClassFinder.Class;
 	HUDClass = AFPSHUD::StaticClass();
 	GameStateClass = ACGameState::StaticClass();
 	PlayerStateClass = ACPlayerState::StaticClass();
+
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.TickInterval = 0.25;
+}
+
+void AFPSGameMode::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (WaitingForSpawnCharacters.Num() > 0)
+	{
+		for (const auto& waitingCharacter : WaitingForSpawnCharacters)
+			MoveToSpawnPoint(waitingCharacter);
+	}
 }
 
 void AFPSGameMode::PostLogin(APlayerController* NewPlayer)
@@ -31,37 +46,60 @@ void AFPSGameMode::PostLogin(APlayerController* NewPlayer)
 		// Set PlayerState to Character from Controller
 		playerPawn->SetPlayerState(playerState);
 
+
 		// Team Contact
 		if (RedTeamCharacters.Num() > BlueTeamCharacters.Num())
 		{
 			BlueTeamCharacters.Add(playerPawn);
 			playerState->Team = ETeamType::Blue;
+
 		}
 		else
 		{
 			RedTeamCharacters.Add(playerPawn);
 			playerState->Team = ETeamType::Red;
+
+			
 		}
 
 		// Team Information to Character
 		playerPawn->CurrentTeam = playerState->Team;
 		playerPawn->SetTeamColor(playerState->Team);
 
+		for (TActorIterator<ACSpawnPoint> iter(GetWorld()); iter; ++iter)
+		{
+			if (iter->GetTeam() == ETeamType::Red)
+				RedTeamSpawnPoints.Add(*iter);
+			else
+				BlueTeamSpawnPoints.Add(*iter);
+		}
+
+
 		MoveToSpawnPoint(playerPawn);
+		SpawnHost();
+	}
+}
+
+void AFPSGameMode::SpawnHost()
+{
+	UWorld* world = GetWorld();
+	if (!!world)
+	{
+		APlayerController* hostController = world->GetFirstPlayerController();
+		if (!!hostController)
+		{
+			APawn* hostPawn = hostController->GetPawn();
+			AFPSCharacter* hostCharacter = Cast<AFPSCharacter>(hostPawn);
+
+			if (!!hostCharacter)
+				MoveToSpawnPoint(hostCharacter);
+		}
 	}
 }
 
 void AFPSGameMode::BeginPlay()
 {
 	Super::BeginPlay();
-
-	for (TActorIterator<ACSpawnPoint> iter(GetWorld()); iter; ++iter)
-	{
-		if (iter->GetTeam() == ETeamType::Red)
-			RedTeamSpawnPoints.Add(*iter);
-		else
-			BlueTeamSpawnPoints.Add(*iter);
-	}
 
 }
 
@@ -82,28 +120,18 @@ void AFPSGameMode::MoveToSpawnPoint(AFPSCharacter* InPlayer)
 		// SpawnPoint is not blocked
 		if (point->IsBlocked() == false)
 		{
-			// InPlayer->SetActorLocation(point->GetActorLocation());
-			FRotator rotation = FRotator::ZeroRotator;
-			if (!!centerPoints[0])
-			{
-				rotation = UKismetMathLibrary::FindLookAtRotation
-				(
-					InPlayer->GetActorLocation(),
-					centerPoints[0]->GetActorLocation()
-				);
-				//InPlayer->SetActorRotation(rotation);
-			}
-				
-			FTransform transform;
-			transform.SetLocation(point->GetActorLocation());
-			transform.SetRotation(FQuat(rotation));
-			InPlayer->SetActorTransform(transform);
+			InPlayer->SetActorLocation(point->GetActorLocation());
 
 			point->UpdateOverlaps();
+
+			if (WaitingForSpawnCharacters.Find(InPlayer) >= 0)
+			WaitingForSpawnCharacters.Remove(InPlayer);
 
 			return;
 		}
 	}
-
+	
 	// SpawnPoint is blocked
+	if (WaitingForSpawnCharacters.Find(InPlayer) < 0)
+		WaitingForSpawnCharacters.Add(InPlayer);
 }
