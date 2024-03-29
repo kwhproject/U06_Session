@@ -14,8 +14,15 @@ public:
 
 	virtual void DrawHUD() override;
 
+protected:
+	virtual void BeginPlay() override;
+
 private:
 	class UTexture2D* CrosshairTex;
 
+	TSubclassOf<class UCHUD> HUDWidgetClass;
+
+	UPROPERTY()
+		class UCHUD* HUDWidget;
 };
 

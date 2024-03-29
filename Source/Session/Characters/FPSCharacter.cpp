@@ -96,6 +96,22 @@ AFPSCharacter::AFPSCharacter()
 	WeaponDamage = 10.0f;
 }
 
+ACPlayerState* AFPSCharacter::GetSelfPlayerState()
+{
+	if (SelfPlayerState == nullptr)
+		SelfPlayerState = Cast<ACPlayerState>(GetPlayerState());
+
+	return SelfPlayerState;
+}
+
+void AFPSCharacter::SetSelfPlayerState(ACPlayerState* NewState)
+{
+	CheckFalse(HasAuthority());
+
+	SetPlayerState(NewState);
+	SelfPlayerState = NewState;
+}
+
 void AFPSCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
 {
 	check(PlayerInputComponent);
@@ -120,6 +136,7 @@ void AFPSCharacter::BeginPlay()
 	{
 		SetTeamColor(CurrentTeam);
 	}
+
 }
 
 void AFPSCharacter::PossessedBy(AController* NewController)
@@ -134,6 +151,8 @@ void AFPSCharacter::PossessedBy(AController* NewController)
 
 void AFPSCharacter::OnFire()
 {
+	CheckTrue(GetSelfPlayerState()->Health <= 0);
+
 	if (FP_FireAnimation != NULL)
 	{
 		UAnimInstance* AnimInstance = FP_Mesh->GetAnimInstance();
@@ -162,21 +181,12 @@ void AFPSCharacter::OnFire()
 
 	const FVector EndTrace = StartTrace + ShootDir * WeaponRange;
 
-	const FHitResult Impact = WeaponTrace(StartTrace, EndTrace);
-
-	AActor* DamagedActor = Impact.GetActor();
-	UPrimitiveComponent* DamagedComponent = Impact.GetComponent();
-
-	if ((DamagedActor != NULL) && (DamagedActor != this) && (DamagedComponent != NULL) && DamagedComponent->IsSimulatingPhysics())
-	{
-		DamagedComponent->AddImpulseAtLocation(ShootDir * WeaponDamage, Impact.Location);
-	}
-
 	OnServerFire(StartTrace, EndTrace);
 }
 
 void AFPSCharacter::OnServerFire_Implementation(const FVector& InLineStart, const FVector& InLineEnd)
 {
+	WeaponTrace(InLineStart, InLineEnd);
 	NetMulticast_ShootEffects();
 }
 
@@ -204,6 +214,30 @@ void AFPSCharacter::NetMulticast_ShootEffects_Implementation()
 		GetWorld()->SpawnActor<ACBullet>(BulletClass, TP_Gun->GetSocketLocation("Muzzle"), TP_Gun->GetSocketRotation("Muzzle"));
 }
 
+void AFPSCharacter::PlayDead_Implementation()
+{
+	FP_Mesh->SetVisibility(false);
+	FP_Gun->bHiddenInGame = true;
+
+	GetMesh()->SetCollisionProfileName("Ragdoll");
+	GetMesh()->SetEnablePhysicsBlending(1.f);
+	GetMesh()->SetSimulatePhysics(true);
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+void AFPSCharacter::PlayDamage_Implementation()
+{
+	if (!!TP_HittedAnimation)
+	{
+		UAnimInstance* animInstance = GetMesh()->GetAnimInstance();
+		if (!!animInstance)
+		{
+			animInstance->Montage_Play(TP_HittedAnimation);
+		}
+	}
+
+}
+
 void AFPSCharacter::SetTeamColor_Implementation(ETeamType InTeamType)
 {
 	FLinearColor color;
@@ -221,6 +255,14 @@ void AFPSCharacter::SetTeamColor_Implementation(ETeamType InTeamType)
 		FP_Mesh->SetMaterial(0, DynamicMaterial);
 		GetMesh()->SetMaterial(0, DynamicMaterial);
 	}
+}
+
+void AFPSCharacter::ForceRotation_Implementation(FRotator NewRotation)
+{
+	SetActorRotation(NewRotation);
+
+	if (!!GetController())
+		GetController()->SetControlRotation(NewRotation);
 }
 
 void AFPSCharacter::MoveForward(float Value)
@@ -249,15 +291,53 @@ void AFPSCharacter::LookUpAtRate(float Rate)
 	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
 }
 
-FHitResult AFPSCharacter::WeaponTrace(const FVector& StartTrace, const FVector& EndTrace) const
+FHitResult AFPSCharacter::WeaponTrace(const FVector& StartTrace, const FVector& EndTrace)
 {
 	FCollisionQueryParams TraceParams(SCENE_QUERY_STAT(WeaponTrace), true, GetInstigator());
 	TraceParams.bReturnPhysicalMaterial = true;
 
 	FHitResult Hit(ForceInit);
-	GetWorld()->LineTraceSingleByChannel(Hit, StartTrace, EndTrace, ECC_GameTraceChannel1, TraceParams);
+	GetWorld()->LineTraceSingleByChannel(Hit, StartTrace, EndTrace, ECC_Pawn, TraceParams);
+
+	CheckFalseResult(Hit.IsValidBlockingHit(), Hit);
+
+	AFPSCharacter* other = Cast<AFPSCharacter>(Hit.GetActor());
+	if (other != nullptr &&
+		other->CurrentTeam != this->CurrentTeam) // 살아 있을 때
+	{
+		FDamageEvent damageEvent;
+		other->TakeDamage(WeaponDamage, damageEvent, GetController(), this);
+	}
 
 	return Hit;
+}
+
+float AFPSCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+	CheckTrueResult(DamageCauser == this, DamageAmount);
+	SelfPlayerState->Health -= DamageAmount;
+
+	// Dead
+	if (SelfPlayerState->Health <= 0)
+	{
+		PlayDead();
+
+		SelfPlayerState->Death++;
+
+		AFPSCharacter* other = Cast<AFPSCharacter>(DamageCauser);
+		if (!!other)
+			other->SelfPlayerState->Score += 1.f;
+
+		return DamageAmount;
+	}
+
+	// Hitted
+	PlayDamage();
+
+
+	return 0.0f;
 }
 
 void AFPSCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const

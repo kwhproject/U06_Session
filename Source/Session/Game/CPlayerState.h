@@ -23,4 +23,6 @@ public:
 	UPROPERTY(Replicated)
 		ETeamType Team;
 
+	UPROPERTY(Replicated)
+		FRotator SpawnRotation;
 };

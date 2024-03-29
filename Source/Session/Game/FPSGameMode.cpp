@@ -43,21 +43,22 @@ void AFPSGameMode::PostLogin(APlayerController* NewPlayer)
 
 	if (!!playerPawn && playerState)
 	{
-		// Set PlayerState to Character from Controller
-		playerPawn->SetPlayerState(playerState);
-
-
 		// Team Contact
 		if (RedTeamCharacters.Num() > BlueTeamCharacters.Num())
 		{
 			BlueTeamCharacters.Add(playerPawn);
 			playerState->Team = ETeamType::Blue;
 
+			NewPlayer->StartSpot = FindPlayerStart(NewPlayer, "BlueTeam");
+			playerState->SpawnRotation = FRotator(0, 45, 0);
 		}
 		else
 		{
 			RedTeamCharacters.Add(playerPawn);
 			playerState->Team = ETeamType::Red;
+
+			NewPlayer->StartSpot = FindPlayerStart(NewPlayer, "RedTeam");
+			playerState->SpawnRotation = FRotator(0, 90, 0);
 
 			
 		}
@@ -74,6 +75,8 @@ void AFPSGameMode::PostLogin(APlayerController* NewPlayer)
 				BlueTeamSpawnPoints.Add(*iter);
 		}
 
+		if(playerPawn->IsPawnControlled())
+		playerPawn->ForceRotation(playerState->SpawnRotation);
 
 		MoveToSpawnPoint(playerPawn);
 		SpawnHost();

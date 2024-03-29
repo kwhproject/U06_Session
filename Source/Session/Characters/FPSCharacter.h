@@ -38,6 +38,9 @@ class AFPSCharacter : public ACharacter
 public:
 	AFPSCharacter();
 
+	class ACPlayerState* GetSelfPlayerState();
+	void SetSelfPlayerState(class ACPlayerState* NewState);
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
 	float BaseTurnRate;
 
@@ -57,6 +60,9 @@ public:
 		UAnimMontage* TP_FireAnimation;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Gameplay)
+		UAnimMontage* TP_HittedAnimation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Gameplay)
 	float WeaponRange;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Gameplay)
@@ -65,6 +71,7 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	void PossessedBy(AController* NewController);
+
 	void OnFire();
 
 	UFUNCTION(Reliable, Server)
@@ -74,11 +81,23 @@ protected:
 	UFUNCTION(NetMulticast, Unreliable)
 		void NetMulticast_ShootEffects();
 	void NetMulticast_ShootEffects_Implementation();
+	
+	UFUNCTION(NetMulticast, Unreliable)
+		void PlayDead();
+	void PlayDead_Implementation();
+
+	UFUNCTION(NetMulticast, Unreliable)
+		void PlayDamage();
+	void PlayDamage_Implementation();
 
 public:
 	UFUNCTION(NetMulticast, Reliable)
 		void SetTeamColor(ETeamType InTeamType);
 	void SetTeamColor_Implementation(ETeamType InTeamType);
+
+	UFUNCTION(Client, Reliable)
+		void ForceRotation(FRotator NewRotation);
+	void ForceRotation_Implementation(FRotator NewRotation);
 
 protected:
 	void MoveForward(float Val);
@@ -88,8 +107,8 @@ protected:
 	void TurnAtRate(float Rate);
 	void LookUpAtRate(float Rate);
 
-	FHitResult WeaponTrace(const FVector& StartTrace, const FVector& EndTrace) const;
-
+	FHitResult WeaponTrace(const FVector& StartTrace, const FVector& EndTrace);
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* InputComponent) override;
 
 public:
