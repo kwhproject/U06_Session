@@ -41,10 +41,10 @@ public:
 	class ACPlayerState* GetSelfPlayerState();
 	void SetSelfPlayerState(class ACPlayerState* NewState);
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category=Camera)
 	float BaseTurnRate;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category=Camera)
 	float BaseLookUpRate;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Gameplay)
@@ -110,6 +110,10 @@ protected:
 	FHitResult WeaponTrace(const FVector& StartTrace, const FVector& EndTrace);
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* InputComponent) override;
+
+private:
+	UFUNCTION()
+		void Respawn();
 
 public:
 	UPROPERTY(Replicated)

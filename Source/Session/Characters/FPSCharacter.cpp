@@ -10,6 +10,7 @@
 #include "Particles/ParticleSystemComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Actors/CBullet.h"
+#include "Game/FPSGameMode.h"
 #include "Game/CPlayerState.h"
 #include "Engine/TargetPoint.h"
 
@@ -89,8 +90,8 @@ AFPSCharacter::AFPSCharacter()
 	//Properties
 	GetCapsuleComponent()->InitCapsuleSize(44.f, 88.0f);
 
-	BaseTurnRate = 45.f;
-	BaseLookUpRate = 45.f;
+	BaseTurnRate = 90.f;
+	BaseLookUpRate = 90.f;
 
 	WeaponRange = 5000.0f;
 	WeaponDamage = 10.0f;
@@ -122,10 +123,22 @@ void AFPSCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInput
 
 	PlayerInputComponent->BindAxis("MoveForward", this, &AFPSCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AFPSCharacter::MoveRight);
-	PlayerInputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
+	PlayerInputComponent->BindAxis("Turn", this, &AFPSCharacter::TurnAtRate);
 	PlayerInputComponent->BindAxis("TurnRate", this, &AFPSCharacter::TurnAtRate);
-	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
+	PlayerInputComponent->BindAxis("LookUp", this, &AFPSCharacter::LookUpAtRate);
 	PlayerInputComponent->BindAxis("LookUpRate", this, &AFPSCharacter::LookUpAtRate);
+}
+
+void AFPSCharacter::Respawn()
+{
+	CheckFalse(HasAuthority());
+
+	AFPSGameMode* gameMode = Cast<AFPSGameMode>(GetWorld()->GetAuthGameMode());
+	CheckNull(gameMode);
+
+	gameMode->Respawn(this);
+
+	Destroy(true);
 }
 
 void AFPSCharacter::BeginPlay()
@@ -136,6 +149,7 @@ void AFPSCharacter::BeginPlay()
 	{
 		SetTeamColor(CurrentTeam);
 	}
+
 
 }
 
@@ -217,9 +231,12 @@ void AFPSCharacter::NetMulticast_ShootEffects_Implementation()
 void AFPSCharacter::PlayDead_Implementation()
 {
 	FP_Mesh->SetVisibility(false);
-	FP_Gun->bHiddenInGame = true;
+	FP_Gun->SetVisibility(false);
 
-	GetMesh()->SetCollisionProfileName("Ragdoll");
+	//GetMesh()->SetVisibility(false);
+	//TP_Gun->SetVisibility(false);
+
+	GetMesh()->SetCollisionProfileName("Spectator");
 	GetMesh()->SetEnablePhysicsBlending(1.f);
 	GetMesh()->SetSimulatePhysics(true);
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -283,11 +300,17 @@ void AFPSCharacter::MoveRight(float Value)
 
 void AFPSCharacter::TurnAtRate(float Rate)
 {
+	CheckNull(SelfPlayerState);
+	CheckTrue(SelfPlayerState->Health <= 0);
+
 	AddControllerYawInput(Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds());
 }
 
 void AFPSCharacter::LookUpAtRate(float Rate)
 {
+	CheckNull(SelfPlayerState);
+	CheckTrue(SelfPlayerState->Health <= 0);
+
 	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
 }
 
@@ -330,14 +353,16 @@ float AFPSCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEv
 		if (!!other)
 			other->SelfPlayerState->Score += 1.f;
 
+		FTimerHandle handle;
+		GetWorldTimerManager().SetTimer(handle, this, &AFPSCharacter::Respawn, 3.f, false);
+
 		return DamageAmount;
 	}
 
 	// Hitted
 	PlayDamage();
 
-
-	return 0.0f;
+	return DamageAmount;
 }
 
 void AFPSCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const

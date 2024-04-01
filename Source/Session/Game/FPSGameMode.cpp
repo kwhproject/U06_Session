@@ -29,8 +29,16 @@ void AFPSGameMode::Tick(float DeltaTime)
 
 	if (WaitingForSpawnCharacters.Num() > 0)
 	{
-		for (const auto& waitingCharacter : WaitingForSpawnCharacters)
-			MoveToSpawnPoint(waitingCharacter);
+		//Todo. Iterator Error
+		for (int32 i = 0; i < WaitingForSpawnCharacters.Num(); i++)
+		{
+			if (WaitingForSpawnCharacters[i] == nullptr &&
+				WaitingForSpawnCharacters[i]->IsPendingKill())
+				continue;
+
+			MoveToSpawnPoint(WaitingForSpawnCharacters[i]);
+		}
+
 	}
 }
 
@@ -106,6 +114,34 @@ void AFPSGameMode::BeginPlay()
 
 }
 
+void AFPSGameMode::Respawn(AFPSCharacter* InPlayer)
+{
+	AController* controller = InPlayer->GetController();
+	
+	// Detach Controller
+	InPlayer->DetachFromControllerPendingDestroy();
+
+	// Respawn Character
+	AFPSCharacter* player = Cast<AFPSCharacter>(GetWorld()->SpawnActor(DefaultPawnClass));
+	CheckNull(player);
+
+	// RE-Possess
+	controller->Possess(player);
+
+	// Move to SpawnPoint
+	ACPlayerState* playerState = Cast<ACPlayerState>(controller->PlayerState);
+	if (!!playerState)
+	{
+		player->CurrentTeam = playerState->Team;
+		player->SetTeamColor(playerState->Team);
+
+		if (player->IsPawnControlled())
+			player->ForceRotation(playerState->SpawnRotation);
+
+		MoveToSpawnPoint(player);
+	}
+}
+
 void AFPSGameMode::MoveToSpawnPoint(AFPSCharacter* InPlayer)
 {
 	TArray<AActor*> centerPoints;
@@ -120,12 +156,14 @@ void AFPSGameMode::MoveToSpawnPoint(AFPSCharacter* InPlayer)
 
 	for (const auto& point : *targetPoints)
 	{
+		// SpawnPoint & Character Overlap Check
+		point->UpdateOverlaps();
+
 		// SpawnPoint is not blocked
 		if (point->IsBlocked() == false)
 		{
 			InPlayer->SetActorLocation(point->GetActorLocation());
 
-			point->UpdateOverlaps();
 
 			if (WaitingForSpawnCharacters.Find(InPlayer) >= 0)
 			WaitingForSpawnCharacters.Remove(InPlayer);

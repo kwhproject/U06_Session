@@ -17,7 +17,7 @@ ACBullet::ACBullet()
 	CHelpers::GetAsset(&materialAsset, "MaterialInstanceConstant'/Game/Materials/MAT_Bullet_Inst.MAT_Bullet_Inst'");
 	Mesh->SetMaterial(0, materialAsset);
 	Mesh->SetRelativeScale3D(FVector(1.f, 0.025f, 0.025f));
-	Mesh->SetCollisionProfileName("NoCollision");
+	Mesh->SetCollisionProfileName("Bullet");
 
 	Projectile->InitialSpeed = 2e+4f;
 	Projectile->MaxSpeed = 2e+4f;
@@ -28,5 +28,12 @@ void ACBullet::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	OnActorBeginOverlap.AddDynamic(this, &ACBullet::BeginOvlap);
+
 	SetLifeSpan(3.f);
+}
+
+void ACBullet::BeginOvlap(AActor* OverlappedActor, AActor* OtherActor)
+{
+	Destroy(true);
 }

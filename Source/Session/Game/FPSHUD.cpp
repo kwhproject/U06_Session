@@ -67,4 +67,10 @@ void AFPSHUD::DrawHUD()
 	HUDWidget->SetHealthText(FString::FromInt((int32)health));
 	HUDWidget->SetScoreText(FString::FromInt((int32)score));
 	HUDWidget->SetDeathText(FString::FromInt((int32)death));
+
+	if (health <= 0)
+		HUDWidget->SetVisibleDeadImage(true);
+	else
+		HUDWidget->SetVisibleDeadImage(false);
+
 }

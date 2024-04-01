@@ -19,6 +19,9 @@ protected:
 	void SpawnHost();
 	virtual void BeginPlay() override;
 
+public:
+	void Respawn(class AFPSCharacter* InPlayer);
+
 private:
 	void MoveToSpawnPoint(class AFPSCharacter* InPlayer);
 
